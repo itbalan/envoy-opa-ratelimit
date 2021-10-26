@@ -51,10 +51,5 @@ curl --location --request GET 'http://localhost:8082/test/greeting?name=bala' --
 curl --location --request GET 'http://localhost:8082/test/greeting?name=bala' --header 'from: partner2'
 3. Template service with 'from' header with 'partner3' value is unlimited 
 curl --location --request GET 'http://localhost:8082/template/' --header 'from:  partner3'
-2. Template service with 'from' header with any value other than 'partner3' value is limited to 2 requests per minute - 3rd request will receive 429 http status.
+4. Template service with 'from' header with any value other than 'partner3' value is limited to 2 requests per minute - 3rd request will receive 429 http status.
 curl --location --request GET 'http://localhost:8082/template/' --header 'from:  '
-  
-
-2. Greeting service with 'from' header with 'partner1' value is limited for 3 requests per minute - 4th request will receive 429 http status
-curl --location --request GET 'http://localhost:8082/test/greeting?name=bala' --header 'from: partner1'
-2. 

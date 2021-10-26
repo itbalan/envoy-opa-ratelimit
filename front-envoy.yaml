@@ -6,7 +6,7 @@ static_resources:
   listeners:
   - name: listener_0
     address:
-      socket_address: { address: 0.0.0.0, port_value: 8080 }
+      socket_address: { address: 0.0.0.0, port_value: 8082 }
     filter_chains:
     - filters:
 #      - name: envoy.filters.network.rbac #Network level RBAC based on IPs, Ports and SSL Subject
@@ -40,16 +40,46 @@ static_resources:
               - match: 
                   prefix: "/test/"
                 route: 
-                  cluster: service1
+                  cluster: svc-greeting
+                  rate_limits:
+                    - actions:
+                        - request_headers:
+                            header_name: "from"
+                            descriptor_key: "from"
                   upgrade_configs:
                   - upgrade_type: CONNECT
               - match: 
                   prefix: "/template/"
                 route: 
-                  cluster: service2
+                  cluster: svc-template
+                  rate_limits:
+                    - actions:
+                        - request_headers:
+                            header_name: "from"
+                            descriptor_key: "template"
+                  upgrade_configs:
+                  - upgrade_type: CONNECT   
+              - match: 
+                  prefix: "/actuator/"
+                route: 
+                  cluster: svc-template
                   upgrade_configs:
                   - upgrade_type: CONNECT    
           http_filters:
+          - name: envoy.filters.http.ratelimit
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+              domain: rl
+              request_type: external
+              stage: 0
+              rate_limited_as_resource_exhausted: true
+              failure_mode_deny: false
+              enable_x_ratelimit_headers: DRAFT_VERSION_03
+              rate_limit_service:
+                grpc_service:
+                  envoy_grpc:
+                    cluster_name: ratelimit
+                transport_api_version: V3
           - name: envoy.ext_authz
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
@@ -71,7 +101,7 @@ static_resources:
           upgrade_configs:
           - upgrade_type: CONNECT
   clusters:
-  - name: service1
+  - name: svc-greeting
     connect_timeout: 0.25s
     type: STRICT_DNS
     lb_policy: round_robin
@@ -82,9 +112,9 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: test
-                port_value: 9090
-  - name: service2
+                address: greeting
+                port_value: 9091
+  - name: svc-template
     connect_timeout: 0.25s
     type: STRICT_DNS
     lb_policy: round_robin
@@ -111,3 +141,18 @@ static_resources:
               socket_address:
                 address: opa
                 port_value: 9191
+  - name: ratelimit
+    type: STRICT_DNS
+    connect_timeout: 1s
+    lb_policy: ROUND_ROBIN
+    protocol_selection: USE_CONFIGURED_PROTOCOL
+    http2_protocol_options: {}
+    load_assignment:
+      cluster_name: ratelimit
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: ratelimit
+                port_value: 8081

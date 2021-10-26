@@ -41,3 +41,8 @@ action_allowed {
   http_request.method == "GET"
   glob.match("/template*", [], http_request.path)
 }
+
+action_allowed {
+  http_request.method == "GET"
+  glob.match("/actuator*", [], http_request.path)
+}
